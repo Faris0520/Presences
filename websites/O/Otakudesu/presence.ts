@@ -1,14 +1,21 @@
-import { Assets } from 'premid'
+import { ActivityType, Assets } from 'premid'
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/O/Otakudesu/assets/logo.png'
+}
 
 const presence = new Presence({
   clientId: '794916348761210920',
 })
+
 const presenceData: PresenceData = {
-  largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/O/Otakudesu/assets/logo.png',
+  type: ActivityType.Playing,
+  largeImageKey: ActivityAssets.Logo,
   startTimestamp: Math.floor(Date.now() / 1000),
 }
 
 presence.on('UpdateData', async () => {
+
   switch (
     document.location.pathname.endsWith('/')
     && document.location.pathname.length > 1
@@ -19,19 +26,34 @@ presence.on('UpdateData', async () => {
       : document.location.pathname
   ) {
     case '/':
-      presenceData.details = 'Viewing homepage'
+      presence.setActivity({
+        details: 'Viewing homepage',
+        largeImageKey: ActivityAssets.Logo
+      })
       break
     case '/anime-list':
-      presenceData.details = 'Viewing anime list'
+      presence.setActivity({
+        details: 'Viewing anime list',
+        largeImageKey: ActivityAssets.Logo
+      })
       break
     case '/jadwal-rilis':
-      presenceData.details = 'Viewing release schedule'
+      presence.setActivity({
+        details: 'Viewing release schedule',
+        largeImageKey: ActivityAssets.Logo
+      })
       break
     case '/ongoing-anime':
-      presenceData.details = 'Viewing ongoing anime list'
+      presence.setActivity({
+        details: 'Viewing ongoing anime list',
+        largeImageKey: ActivityAssets.Logo
+      })
       break
     case '/genre-list':
-      presenceData.details = 'Viewing anime genre list'
+      presence.setActivity({
+        details: 'Viewing anime genre list',
+        largeImageKey: ActivityAssets.Logo
+      })
       break
     default: {
       if (document.location.search.startsWith('?s')) {
@@ -41,38 +63,49 @@ presence.on('UpdateData', async () => {
             .replaceAll('&', '","')
             .replaceAll('=', '":"')}"}`,
         )
-        presenceData.details = 'Searching for:'
-        presenceData.state = s
-        presenceData.smallImageKey = Assets.Search
+        presence.setActivity({
+          details: 'Searching for:',
+          state: s,
+          largeImageKey: ActivityAssets.Logo,
+          smallImageKey: Assets.Search
+        })
       }
       if (document.location.pathname.startsWith('/anime')) {
-        presenceData.details = 'Viewing anime'
-        presenceData.state = document
-          .querySelector('.jdlrx > h1')
-          ?.textContent
-          ?.replace(/Subtitle Indonesia/gi, '')
-        presenceData.buttons = [
-          { label: 'View anime', url: document.location.href },
-        ]
+        const animeTitle = document.querySelector('.jdlrx > h1')?.textContent?.replace(/Subtitle Indonesia/gi, '')
+        presence.setActivity({
+          details: 'Viewing anime',
+          state: animeTitle,
+          largeImageKey: ActivityAssets.Logo,
+          buttons: [
+            { label: 'View anime', url: document.location.href },
+          ]
+        })
       }
       if (document.querySelector('.mirrorstream')) {
-        presenceData.details = 'Watching anime'
-        presenceData.state = document
-          .querySelector('.posttl')
-          ?.textContent
-          ?.replace(/Subtitle Indonesia/gi, '')
-        presenceData.buttons = [
-          { label: 'Watch Anime', url: document.location.href },
-          {
-            label: 'View Anime',
-            url: [...document.querySelectorAll('a')].find(x =>
-              /See All Episodes/i.exec(x?.textContent ?? ''),
-            )?.href ?? '',
-          },
-        ]
+        const fullTitle = document.querySelector('.posttl')?.textContent?.replace(/Subtitle Indonesia/gi, '') || ''
+        const episodeMatch = fullTitle.match(/Episode (\d+)/i)
+        const seasonMatch = fullTitle.match(/Season (\d+)/i)
+        const animeTitle = fullTitle
+          .replace(/Season \d+/gi, '')
+          .replace(/Episode \d+/gi, '')
+          .trim()
+
+        // Default to S1 if no season specified
+        const season = seasonMatch ? seasonMatch[1] : '1'
+        const episode = episodeMatch ? episodeMatch[1] : ''
+
+        presence.setActivity({
+          type: ActivityType.Watching,
+          name: animeTitle,
+          details: `Episode ${episode}`,
+          state: `Season ${season} - Episode ${episode}`,
+          largeImageKey: document.querySelector('.cukder img')?.getAttribute('src') || ActivityAssets.Logo,
+          buttons: [
+            { label: 'Watch Anime', url: document.location.href },
+          ],
+        })
       }
       break
     }
   }
-  presence.setActivity(presenceData)
 })
